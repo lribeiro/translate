@@ -65,8 +65,8 @@ class TranslateController < ActionController::Base
   
   private
   def initialize_keys
-    @files = Translate::Keys.files
-    @keys = (@files.keys.map(&:to_s) + Translate::Keys.new.i18n_keys(@from_locale)).uniq    
+    files = Translate::Keys.files
+    @keys = (files.keys.map(&:to_s) + Translate::Keys.new.i18n_keys(@from_locale)).uniq    
     @keys.reject! do |key|
       from_text = lookup(@from_locale, key)
       # When translating from one language to another, make sure there is a text to translate from.
