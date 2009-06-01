@@ -86,7 +86,9 @@ class TranslateController < ActionController::Base
     @keys.reject! do |key|
       case params[:filter]
       when 'untranslated'
-        lookup(@to_locale, key).present?
+        # do not use present?, as it uses !blank?, but blank? ignores ' '
+        result = lookup(@to_locale, key)
+        !(result.empty?) unless result.nil?
       when 'translated'
         lookup(@to_locale, key).blank?
       when 'changed'
