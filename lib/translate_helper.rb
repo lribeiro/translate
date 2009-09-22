@@ -1,3 +1,4 @@
+#encoding: utf-8
 module TranslateHelper
   def simple_filter(labels, param_name = 'filter', selected_value = nil)
     selected_value ||= params[param_name]

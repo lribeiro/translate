@@ -1,3 +1,5 @@
+#encoding:utf-8
+
 class TranslateController < ActionController::Base
   # It seems users with active_record_store may get a "no :secret given" error if we don't disable csrf protection,
   skip_before_filter :verify_authenticity_token
@@ -5,9 +7,27 @@ class TranslateController < ActionController::Base
   prepend_view_path(File.join(File.dirname(__FILE__), "..", "views"))
   layout 'translate'
 
-  before_filter :init_translations
+  before_filter :load_user
+  before_filter :valid_translator
+  before_filter :force_init_translations
   before_filter :set_locale
-  
+
+
+  def load_user
+    @user = User.find(:first, :conditions=>['id = ?', session[ :user_id ]] )
+
+    if @user.nil?
+      redirect_to( :controller => 'user', :action => 'register' )
+    else
+      if params[:locale]
+        @user.language = params[:locale]
+        session[:locale] = params[:locale]
+      end
+
+      I18n.locale = session[:locale]
+    end
+  end
+
   def index
     initialize_keys
     filter_by_key_pattern
@@ -16,15 +36,26 @@ class TranslateController < ActionController::Base
     sort_keys
     paginate_keys
     @total_entries = @keys.size
+
+    @from_locales = [["Português",:pt],["English", :en]]
+    unless @user.admin?
+      @to_locales = @user.languages.map{|x| [x.name,x.code.to_sym]}
+    else
+      @to_locales = Language.all.map{|x| [x.name,x.code.to_sym]}
+    end
   end
   
   def translate
+    params[:key].keys.each do |key|
+      params[:key].delete(key) if params[:key][key].blank?
+    end
+
     I18n.backend.store_translations(@to_locale, Translate::Keys.to_deep_hash(params[:key]))
     Translate::Storage.new(@to_locale).write_to_file
     Translate::Log.new(@from_locale, @to_locale, params[:key].keys).write_to_file
-    force_init_translations # Force reload from YAML file
+#    force_init_translations # Force reload from YAML file
     flash[:notice] = "Translations stored"
-    redirect_to params.slice(:filter, :sort_by, :key_type, :key_pattern, :text_type, :text_pattern).merge({:action => :index})
+    redirect_to params.slice(:filter, :sort_by, :key_type, :key_pattern, :text_type, :text_pattern, :page).merge({:action => :index})
   end
 
   def reload
@@ -70,9 +101,9 @@ class TranslateController < ActionController::Base
     return if params[:key_pattern].blank?
     @keys.reject! do |key|
       case params[:key_type]
-      when "starts_with":
+      when "starts_with"
         !key.starts_with?(params[:key_pattern])
-      when "contains":
+      when "contains"
         key.index(params[:key_pattern]).nil?
       else
         raise "Unknown key_type '#{params[:key_type]}'"
@@ -84,9 +115,9 @@ class TranslateController < ActionController::Base
     return if params[:text_pattern].blank?
     @keys.reject! do |key|
       case params[:text_type]
-      when 'contains':
+      when 'contains'
         !lookup(@from_locale, key).present? || !lookup(@from_locale, key).to_s.downcase.index(params[:text_pattern].downcase)
-      when 'equals':
+      when 'equals'
         !lookup(@from_locale, key).present? || lookup(@from_locale, key).to_s.downcase != params[:text_pattern].downcase
       else
         raise "Unknown text_type '#{params[:text_type]}'"
@@ -97,9 +128,9 @@ class TranslateController < ActionController::Base
   def sort_keys
     params[:sort_by] ||= "key"
     case params[:sort_by]
-    when "key":
+    when "key"
       @keys.sort!
-    when "text":
+    when "text"
       @keys.sort! do |key1, key2|
         if lookup(@from_locale, key1).present? && lookup(@from_locale, key2).present?
           lookup(@from_locale, key1).to_s.downcase <=> lookup(@from_locale, key2).to_s.downcase
@@ -161,5 +192,13 @@ class TranslateController < ActionController::Base
   
   def log_hash
     @log_hash ||= Translate::Log.new(@from_locale, @to_locale, {}).read
+  end
+
+  private
+  def valid_translator
+    if @user.languages.empty? && !@user.admin?
+      append_error(I18n.t(:invalid_translator))
+      redirect_to(:controller => "/")
+    end
   end
 end

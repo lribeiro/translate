@@ -1,3 +1,4 @@
+#encoding: utf-8
 require 'pathname'
 
 class Translate::Keys
@@ -99,12 +100,14 @@ class Translate::Keys
   
   def extract_files
     files_to_scan.inject(HashWithIndifferentAccess.new) do |files, file|
-      IO.read(file).scan(i18n_lookup_pattern).flatten.map(&:to_sym).each do |key|
-        files[key] ||= []
-        path = Pathname.new(File.expand_path(file)).relative_path_from(Pathname.new(Rails.root)).to_s
-        files[key] << path if !files[key].include?(path)
-      end
-      files
+      puts "reading file " + file
+      #      IO.read(file).scan(i18n_lookup_pattern).flatten.map(&:to_sym).each do |key|
+      #        files[key] ||= []
+      #        path = Pathname.new(File.expand_path(file)).relative_path_from(Pathname.new(Rails.root)).to_s
+      #        files[key] << path if !files[key].include?(path)
+      #      end
+      #      files
+      {}
     end
   end
 

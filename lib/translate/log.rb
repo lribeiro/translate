@@ -1,3 +1,4 @@
+#encoding: utf-8
 class Translate::Log
   attr_accessor :from_locale, :to_locale, :keys
   

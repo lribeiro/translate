@@ -1,3 +1,4 @@
+#encoding: utf-8
 class Article < ActiveRecord::Base
   def validate
     # t('li')

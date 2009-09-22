@@ -1,3 +1,4 @@
+#encoding: utf-8
 require 'translate'
 
 # TODO: Use new method available_locales once Rails is upgraded, see:

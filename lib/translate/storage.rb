@@ -1,3 +1,4 @@
+#encoding: utf-8
 class Translate::Storage
   attr_accessor :locale
   

@@ -1,3 +1,4 @@
+#encoding: utf-8
 module Translate
   class Routes
     def self.translation_ui(map)

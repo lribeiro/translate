@@ -1,3 +1,4 @@
+#encoding: utf-8
 begin
   require File.dirname(__FILE__) + '/../../../../spec/spec_helper'
 rescue LoadError
