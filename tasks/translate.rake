@@ -155,8 +155,9 @@ namespace :translate do
       if !from_text.blank? && to_text.blank?
         print "#{key}: '#{from_text[0, 40]}' => "
         if !translations[from_text]
-          response = GoogleApi.translate(from_text, ENV['TO'], ENV['FROM'])
-          translations[from_text] = response["responseData"] && response["responseData"]["translatedText"]
+          if response = GoogleApi.translate(from_text, ENV['TO'], ENV['FROM'])
+            translations[from_text] = response["responseData"] && response["responseData"]["translatedText"]
+          end
         end
         if !(translation = translations[from_text]).blank?
           translation.gsub!(/\(\(([a-z_.]+)\)\)/i, '{{\1}}')
