@@ -140,7 +140,7 @@ namespace :translate do
           tries += 1
           puts("SLEEPING - retrying in 5...")
           sleep(5)
-          retry if tries < 10
+          retry if tries < 3
         end
       end
     end
