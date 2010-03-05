@@ -25,46 +25,6 @@ class Translate::Keys
     I18n.backend.send(:init_translations) unless I18n.backend.initialized?
     extract_i18n_keys(I18n.backend.send(:translations)[locale.to_sym]).sort
   end
-
-  def untranslated_keys
-    Translate::Keys.translated_locales.inject({}) do |missing, locale|
-      missing[locale] = i18n_keys(I18n.default_locale).map do |key|
-        I18n.backend.send(:lookup, locale, key) ? nil : key
-      end.compact
-      missing
-    end
-  end
-
-  def self.translated_locales
-    I18n.available_locales.reject { |locale| [:root, I18n.default_locale.to_sym].include?(locale) }        
-  end
-  
-  # Convert something like:
-  # 
-  # {
-  #  :pressrelease => {
-  #    :label => {
-  #      :one => "Pressmeddelande"
-  #    }
-  #   }
-  # }
-  # 
-  # to:
-  # 
-  #  {'pressrelease.label.one' => "Pressmeddelande"}
-  #
-  def self.to_shallow_hash(hash)
-    hash.inject({}) do |shallow_hash, (key, value)|
-      if value.is_a?(Hash)
-        to_shallow_hash(value).each do |sub_key, sub_value|
-          shallow_hash[[key, sub_key].join(".")] = sub_value
-        end
-      else
-        shallow_hash[key.to_s] = value
-      end
-      shallow_hash
-    end
-  end
   
   # Convert something like:
   # 
@@ -81,7 +41,7 @@ class Translate::Keys
   # }
   def self.to_deep_hash(hash)    
     hash.inject({}) do |deep_hash, (key, value)|
-      keys = key.to_s.split('.').reverse
+      keys = key.split('.').reverse
       leaf_key = keys.shift
       key_hash = keys.inject({leaf_key.to_sym => value}) { |hash, key| {key.to_sym => hash} }
       deep_merge!(deep_hash, key_hash)

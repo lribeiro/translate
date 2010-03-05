@@ -1,9 +1,7 @@
 begin
-  # Using PWD here instead of File.dirname(__FILE__) to be able to symlink to plugin
-  # from within a Rails app.
-  require File.expand_path(ENV['PWD'] + '/../../../spec/spec_helper')
-rescue LoadError => e
-  puts "You need to install rspec in your base app\n#{e.message}: #{e.backtrace.join("\n")}"
+  require File.dirname(__FILE__) + '/../../../../spec/spec_helper'
+rescue LoadError
+  puts "You need to install rspec in your base app"
   exit
 end
 

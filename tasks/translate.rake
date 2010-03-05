@@ -33,22 +33,6 @@ class Hash
 end
 
 namespace :translate do
-  desc "Show untranslated keys for locale LOCALE"
-  task :untranslated => :environment do
-    from_locale = I18n.default_locale
-    untranslated = Translate::Keys.new.untranslated_keys
-    if untranslated.present?
-      untranslated.each do |locale, keys|
-        keys.each do |key|
-          from_text = I18n.backend.send(:lookup, from_locale, key)
-          puts "#{locale}.#{key} (#{from_locale}.#{key}='#{from_text}')"
-        end
-      end
-    else
-      puts "No untranslated keys"
-    end
-  end
-  
   desc "Show I18n keys that are missing in the config/locales/default_locale.yml YAML file"
   task :lost_in_translation => :environment do
     LOCALE = I18n.default_locale
@@ -73,23 +57,6 @@ namespace :translate do
       key_exist?(key_arr, locale_hash[key]) if (locale_hash && locale_hash.include?(key))
     elsif locale_hash
       true
-    end
-  end
-
-  desc "Remove all translation texts that are no longer present in the locale they were translated from"
-  task :remove_obsolete_keys => :environment do
-    I18n.backend.send(:init_translations)
-    master_locale = ENV['LOCALE'] || I18n.default_locale
-    Translate::Keys.translated_locales.each do |locale|
-      texts = {}
-      Translate::Keys.new.i18n_keys(locale).each do |key|
-        if I18n.backend.send(:lookup, master_locale, key).to_s.present?
-          texts[key] = I18n.backend.send(:lookup, locale, key)
-        end
-      end
-      I18n.backend.send(:translations)[locale] = nil # Clear out all current translations
-      I18n.backend.store_translations(locale, Translate::Keys.to_deep_hash(texts))
-      Translate::Storage.new(locale).write_to_file      
     end
   end
 
@@ -172,7 +139,7 @@ namespace :translate do
     puts "\nTime elapsed: #{(((Time.now - start_at) / 60) * 10).to_i / 10.to_f} minutes"
     Translate::Storage.new(ENV['TO'].to_sym).write_to_file
   end
-  
+
   desc 'Create a new translation based on the English translation (pass in LOCALE_CODE - a two letter country code, and LOCALE_NAME - the translated name of the language you\'re adding.)'
   task :create do
     raise "LOCALE_CODE (two letter country code) is not set. Please set one before running the rake task." unless ENV['LOCALE_CODE']
@@ -415,21 +382,4 @@ namespace :translate do
     text.gsub(/&/, '&amp;').gsub(/</, '&lt;').gsub(/>/, '&gt;')
   end
 
-  desc "List keys that have changed I18n texts between YAML file ENV['FROM_FILE'] and YAML file ENV['TO_FILE']. Set ENV['VERBOSE'] to see changes"
-  task :changed => :environment do
-    from_hash = Translate::Keys.to_shallow_hash(Translate::File.new(ENV['FROM_FILE']).read)
-    to_hash = Translate::Keys.to_shallow_hash(Translate::File.new(ENV['TO_FILE']).read)
-    from_hash.each do |key, from_value|
-      if (to_value = to_hash[key]) && to_value != from_value
-        key_without_locale = key[/^[^.]+\.(.+)$/, 1]
-        if ENV['VERBOSE']
-          puts "KEY: #{key_without_locale}"
-          puts "FROM VALUE: '#{from_value}'"
-          puts "TO VALUE: '#{to_value}'"
-        else
-          puts key_without_locale
-        end
-      end      
-    end
-  end
 end
