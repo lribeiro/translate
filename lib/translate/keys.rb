@@ -24,7 +24,53 @@ class Translate::Keys
 
   def i18n_keys(locale)
     I18n.backend.send(:init_translations) unless I18n.backend.initialized?
-    extract_i18n_keys(I18n.backend.send(:translations)[locale.to_sym]).sort
+    Translate::Keys.to_shallow_hash(I18n.backend.send(:translations)[locale.to_sym]).keys.sort
+  end
+
+  def untranslated_keys
+    Translate::Keys.translated_locales.inject({}) do |missing, locale|
+      missing[locale] = i18n_keys(I18n.default_locale).map do |key|
+        I18n.backend.send(:lookup, locale, key).nil? ? key : nil
+      end.compact
+      missing
+    end
+  end
+
+  def missing_keys
+    locale = I18n.default_locale; yaml_keys = {}
+    yaml_keys = Translate::Storage.file_paths(locale).inject({}) do |keys, path|
+      keys = keys.deep_merge(Translate::File.new(path).read[locale.to_s])
+    end
+    files.reject { |key, file| self.class.contains_key?(yaml_keys, key) }
+  end
+
+  def self.translated_locales
+    I18n.available_locales.reject { |locale| [:root, I18n.default_locale.to_sym].include?(locale) }        
+  end
+
+  # Checks if a nested hash contains the keys in dot separated I18n key.
+  #
+  # Example:
+  #
+  # hash = {
+  #   :foo => {
+  #     :bar => {
+  #       :baz => 1
+  #     }
+  #   }
+  # }
+  #
+  # contains_key?("foo", key) # => true
+  # contains_key?("foo.bar", key) # => true
+  # contains_key?("foo.bar.baz", key) # => true
+  # contains_key?("foo.bar.baz.bla", key) # => false
+  #
+  def self.contains_key?(hash, key)
+    keys = key.to_s.split(".")
+    return false if keys.empty?
+    !keys.inject(HashWithIndifferentAccess.new(hash)) do |memo, key|
+      memo.is_a?(Hash) ? memo.try(:[], key) : nil
+    end.nil?
   end
 
   def untranslated_keys
@@ -115,20 +161,7 @@ class Translate::Keys
   end
 
   private
-  def extract_i18n_keys(hash, parent_keys = [])
-    hash.inject([]) do |keys, (key, value)|
-      full_key = parent_keys + [key]
-      if value.is_a?(Hash)
-        # Nested hash
-        keys += extract_i18n_keys(value, full_key)
-      elsif value.present?
-        # String leaf node
-        keys << full_key.join(".")
-      end
-      keys
-    end
-  end
-  
+
   def extract_files
     files_to_scan.inject(HashWithIndifferentAccess.new) do |files, file|
       puts "reading file " + file

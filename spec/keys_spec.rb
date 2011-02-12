@@ -1,10 +1,12 @@
 #encoding: utf-8
 require File.dirname(__FILE__) + '/spec_helper'
+require 'fileutils'
 
 describe Translate::Keys do
   before(:each) do
+    I18n.stub!(:default_locale).and_return(:en)      
     @keys = Translate::Keys.new
-    @keys.stub!(:files_root_dir).and_return(i18n_files_dir)
+    Translate::Storage.stub!(:root_dir).and_return(i18n_files_dir)
   end
   
   describe "to_a" do
@@ -27,7 +29,7 @@ describe Translate::Keys do
     
     it "should return all keys in the I18n backend translations hash" do
       I18n.backend.should_receive(:translations).and_return(translations)
-      @keys.i18n_keys(:en).should == ['articles.new.page_title', 'categories.flash.created', 'home.about']
+      @keys.i18n_keys(:en).should == ['articles.new.page_title', 'categories.flash.created', 'empty', 'home.about']
     end
     
   describe "untranslated_keys" do
@@ -76,11 +78,10 @@ describe Translate::Keys do
       {
         :en => {
           :home => {
-            :about => "This site is about making money"
-          },
-          :articles => {
-           :new => {
-             :page_title => "New Article"
+            :page_title => false,
+            :intro => {
+              :one => "intro one",
+              :other => "intro other"
             }
           },
           :categories => {
@@ -95,6 +96,23 @@ describe Translate::Keys do
             :about => "Denna site handlar om att tjäna pengar"
           }
         }
+      })
+    end
+    
+    after(:each) do
+      FileUtils.rm(@file_path)
+    end
+    
+    it "should return a hash with keys that are not in the locale file" do
+      @keys.stub!(:files).and_return({
+        :'home.page_title' => "app/views/home/index.rhtml",
+        :'home.intro' => 'app/views/home/index.rhtml',
+        :'home.signup' => "app/views/home/_signup.rhtml",
+        :'about.index.page_title' => "app/views/about/index.rhtml"
+      })
+      @keys.missing_keys.should == {
+        :'home.signup' => "app/views/home/_signup.rhtml",
+        :'about.index.page_title' => "app/views/about/index.rhtml"        
       }
     end
   end
@@ -122,6 +140,6 @@ describe Translate::Keys do
   end
   
   def i18n_files_dir
-    File.join(File.dirname(__FILE__), "files", "translate")
+    File.join(ENV['PWD'], "spec", "files", "translate")
   end
 end
